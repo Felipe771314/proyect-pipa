@@ -1,0 +1,16 @@
+{
+    "name": "mi-proyecto",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+      "wordpress:download": "curl -o wordpress.zip https://wordpress.org/latest.zip && unzip -o wordpress.zip -d wordpress && rm wordpress.zip",
+      "wordpress:setup": "npm run wordpress:download",
+      "angular:install": "cd angular-app && npm install",
+      "start:angular": "cd angular-app && npm start",
+      "start:wordpress": "cd wordpress && php -S localhost:8000",
+      "start": "concurrently \"npm run start:wordpress\" \"npm run start:angular\""
+    },
+    "dependencies": {
+      "concurrently": "^7.0.0"
+    }
+  }
