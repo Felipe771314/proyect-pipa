@@ -10,9 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
   exit; // Evitar acceso directo.
 }
 
-/**
- * Registro del Custom Post Type para páginas del Page Builder.
- */
+// Registro del CPT
 function register_page_builder_cpt() {
     $labels = array(
       'name' => 'Páginas',
@@ -24,39 +22,41 @@ function register_page_builder_cpt() {
       'view_item' => 'Ver página',
       'search_items' => 'Buscar páginas',
     );
-  
+
     $args = array(
       'labels' => $labels,
       'public' => true,
       'has_archive' => true,
       'rewrite' => array('slug' => 'paginas'),
-      'show_in_rest' => true, // Esto expone el CPT en la WP REST API
+      'show_in_rest' => true,
       'supports' => array('title', 'editor', 'thumbnail'),
     );
-  
+
     register_post_type('page_builder', $args);
 }
 add_action('init', 'register_page_builder_cpt');
 
-/**
- * Registro de endpoints personalizados en la WP REST API.
- */
+// Hook de activación: registra el CPT y flushea las reglas.
+function my_custom_plugin_activate() {
+    register_page_builder_cpt();
+    flush_rewrite_rules();
+}
+register_activation_hook(__FILE__, 'my_custom_plugin_activate');
+
+// Endpoints personalizados en la WP REST API
 add_action('rest_api_init', function () {
-  // Endpoint para obtener todas las páginas creadas con el CPT 'page_builder'
   register_rest_route('custom/v1', '/pages', array(
     'methods' => 'GET',
     'callback' => 'get_page_builder_pages',
     'permission_callback' => '__return_true',
   ));
-  
-  // Endpoint para actualizar la configuración de una página específica (por ID)
+
   register_rest_route('custom/v1', '/pages/(?P<id>\d+)', array(
     'methods' => 'POST',
     'callback' => 'update_page_builder_content',
-    'permission_callback' => 'current_user_can', // Ajusta según tus necesidades de permisos
+    'permission_callback' => 'current_user_can',
   ));
-  
-  // Endpoint de prueba para verificar que el plugin funciona
+
   register_rest_route('custom/v1', '/hello', array(
     'methods' => 'GET',
     'callback' => 'my_custom_plugin_hello',
@@ -64,9 +64,6 @@ add_action('rest_api_init', function () {
   ));
 });
 
-/**
- * Función para obtener las páginas creadas con el CPT 'page_builder'.
- */
 function get_page_builder_pages() {
   $args = array(
     'post_type' => 'page_builder',
@@ -74,7 +71,7 @@ function get_page_builder_pages() {
   );
   $query = new WP_Query($args);
   $pages = array();
-  
+
   if ($query->have_posts()) {
     while ($query->have_posts()) {
       $query->the_post();
@@ -82,7 +79,6 @@ function get_page_builder_pages() {
         'id'     => get_the_ID(),
         'title'  => get_the_title(),
         'slug'   => get_post_field('post_name', get_the_ID()),
-        // Se asume que la configuración del editor se guarda en un meta field llamado 'page_config'
         'config' => get_post_meta(get_the_ID(), 'page_config', true),
       );
     }
@@ -91,22 +87,14 @@ function get_page_builder_pages() {
   return rest_ensure_response($pages);
 }
 
-/**
- * Función para actualizar la configuración de una página.
- */
 function update_page_builder_content($request) {
   $id = $request['id'];
-  $config = $request->get_param('config'); // Recibir el JSON con la estructura de la página
-  
-  // Guarda el nuevo contenido/configuración en un meta field
+  $config = $request->get_param('config');
+
   update_post_meta($id, 'page_config', $config);
-  
   return rest_ensure_response(array('success' => true));
 }
 
-/**
- * Función de prueba para el endpoint /hello.
- */
 function my_custom_plugin_hello($request) {
   return rest_ensure_response(array('message' => 'Hola, este es el endpoint de prueba.'));
 }
