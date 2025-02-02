@@ -1,62 +1,32 @@
 <?php
 /**
  * Plugin Name: My Custom Plugin
- * Description: Plugin base para extender WordPress con endpoints personalizados y funcionalidades custom para un editor de páginas.
+ * Description: Plugin para extender WordPress con endpoints para el editor de páginas.
  * Version: 1.0.0
  * Author: Tu Nombre
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-  exit; // Evitar acceso directo.
+  exit;
 }
 
-// Registro del CPT
-function register_page_builder_cpt() {
-    $labels = array(
-      'name' => 'Páginas',
-      'singular_name' => 'Página',
-      'add_new' => 'Añadir nueva',
-      'add_new_item' => 'Añadir nueva página',
-      'edit_item' => 'Editar página',
-      'new_item' => 'Nueva página',
-      'view_item' => 'Ver página',
-      'search_items' => 'Buscar páginas',
-    );
-
-    $args = array(
-      'labels' => $labels,
-      'public' => true,
-      'has_archive' => true,
-      'rewrite' => array('slug' => 'paginas'),
-      'show_in_rest' => true,
-      'supports' => array('title', 'editor', 'thumbnail'),
-    );
-
-    register_post_type('page_builder', $args);
-}
-add_action('init', 'register_page_builder_cpt');
-
-// Hook de activación: registra el CPT y flushea las reglas.
-function my_custom_plugin_activate() {
-    register_page_builder_cpt();
-    flush_rewrite_rules();
-}
-register_activation_hook(__FILE__, 'my_custom_plugin_activate');
-
-// Endpoints personalizados en la WP REST API
+// Registrar endpoints en la REST API
 add_action('rest_api_init', function () {
+  // Endpoint para obtener todas las páginas
   register_rest_route('custom/v1', '/pages', array(
     'methods' => 'GET',
     'callback' => 'get_page_builder_pages',
     'permission_callback' => '__return_true',
   ));
 
+  // Endpoint para actualizar la configuración de una página (por ID)
   register_rest_route('custom/v1', '/pages/(?P<id>\d+)', array(
     'methods' => 'POST',
     'callback' => 'update_page_builder_content',
     'permission_callback' => 'current_user_can',
   ));
 
+  // Endpoint de prueba
   register_rest_route('custom/v1', '/hello', array(
     'methods' => 'GET',
     'callback' => 'my_custom_plugin_hello',
@@ -79,6 +49,7 @@ function get_page_builder_pages() {
         'id'     => get_the_ID(),
         'title'  => get_the_title(),
         'slug'   => get_post_field('post_name', get_the_ID()),
+        // La configuración se almacena en un meta field 'page_config'
         'config' => get_post_meta(get_the_ID(), 'page_config', true),
       );
     }
@@ -89,7 +60,7 @@ function get_page_builder_pages() {
 
 function update_page_builder_content($request) {
   $id = $request['id'];
-  $config = $request->get_param('config');
+  $config = $request->get_param('config'); // Recibe el JSON con la estructura de la página
 
   update_post_meta($id, 'page_config', $config);
   return rest_ensure_response(array('success' => true));
@@ -98,3 +69,10 @@ function update_page_builder_content($request) {
 function my_custom_plugin_hello($request) {
   return rest_ensure_response(array('message' => 'Hola, este es el endpoint de prueba.'));
 }
+
+// Para asegurarte de que las reglas de reescritura se actualicen automáticamente al activar el plugin:
+function my_custom_plugin_activate() {
+  register_page_builder_cpt();
+  flush_rewrite_rules();
+}
+register_activation_hook(__FILE__, 'my_custom_plugin_activate');
